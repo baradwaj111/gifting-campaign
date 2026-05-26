@@ -1,0 +1,200 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum AccountTier {
+  STRATEGIC
+  ENTERPRISE
+  MID_MARKET
+}
+
+enum ContactResearchStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+}
+
+enum Platform {
+  LINKEDIN
+  INSTAGRAM
+  X
+  WEBSITE
+  OTHER
+}
+
+enum ResearchJobType {
+  PROFILE_RESEARCH
+  INTEREST_EXTRACTION
+  GIFT_GENERATION
+}
+
+enum JobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum InterestCategory {
+  FITNESS
+  MUSIC
+  SPORTS
+  TRAVEL
+  FAMILY
+  FOOD
+  BOOKS
+  TECH
+  GAMING
+  ART
+  UNKNOWN
+}
+
+enum GiftCategory {
+  SUBSCRIPTION
+  EVENT
+  MERCHANDISE
+  EXPERIENCE
+  PHYSICAL_PRODUCT
+  CHARITY
+  GIFT_CARD
+}
+
+enum GiftType {
+  PHYSICAL
+  VIRTUAL
+  EXPERIENCE
+}
+
+enum GiftStatus {
+  DRAFT
+  APPROVED
+  ORDERED
+  SENT
+  DELIVERED
+  REJECTED
+}
+
+model Account {
+  id          String      @id @default(cuid())
+  name        String
+  domain      String?
+  industry    String?
+  city        String?
+  country     String?
+  expectedAcv Int
+  tier        AccountTier
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  contacts Contact[]
+}
+
+model Contact {
+  id        String                @id @default(cuid())
+  accountId String
+  firstName String
+  lastName  String
+  title     String?
+  email     String?
+  city      String?
+  country   String?
+  seniority String?
+  status    ContactResearchStatus @default(NOT_STARTED)
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
+
+  account         Account              @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  profiles        SocialProfile[]
+  researchJobs    ResearchJob[]
+  interests       ContactInterest[]
+  recommendations GiftRecommendation[]
+
+  @@index([accountId])
+  @@index([status])
+}
+
+model SocialProfile {
+  id            String    @id @default(cuid())
+  contactId     String
+  platform      Platform
+  url           String
+  rawText       String?
+  lastScrapedAt DateTime?
+  createdAt     DateTime  @default(now())
+
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@index([contactId])
+  @@index([platform])
+}
+
+model ResearchJob {
+  id           String          @id @default(cuid())
+  contactId    String
+  jobType      ResearchJobType
+  status       JobStatus       @default(PENDING)
+  provider     String?
+  startedAt    DateTime?
+  completedAt  DateTime?
+  errorMessage String?
+  metadata     Json?
+  createdAt    DateTime        @default(now())
+
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@index([contactId])
+  @@index([status])
+  @@index([jobType])
+}
+
+model ContactInterest {
+  id         String           @id @default(cuid())
+  contactId  String
+  category   InterestCategory
+  label      String
+  evidence   String?
+  sourceUrl  String?
+  confidence Float
+  detectedBy String
+  createdAt  DateTime         @default(now())
+
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@index([contactId])
+  @@index([category])
+}
+
+model GiftRecommendation {
+  id            String       @id @default(cuid())
+  contactId     String
+  interestId    String?
+  title         String
+  description   String
+  category      GiftCategory
+  estimatedCost Int
+  currency      String       @default("USD")
+  vendor        String?
+  giftType      GiftType
+  status        GiftStatus   @default(DRAFT)
+  reasoning     String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@index([contactId])
+  @@index([status])
+  @@index([category])
+  @@index([estimatedCost])
+}
