@@ -11,6 +11,7 @@ const GIFT_STATUS_BADGE: Record<string, string> = {
   ORDERED: "bg-blue-100 text-blue-700",
   SENT: "bg-violet-100 text-violet-700",
   DELIVERED: "bg-teal-100 text-teal-700",
+  SUPERSEDED: "bg-slate-100 text-slate-400 line-through",
 };
 const TIER_BADGE: Record<string, string> = {
   STRATEGIC: "bg-violet-100 text-violet-700",
@@ -28,7 +29,7 @@ const CATEGORY_BADGE: Record<string, string> = {
 };
 
 const GIFT_TYPES = ["PHYSICAL", "VIRTUAL", "EXPERIENCE"];
-const GIFT_STATUSES = ["DRAFT", "APPROVED", "REJECTED", "ORDERED", "SENT", "DELIVERED"];
+const GIFT_STATUSES = ["DRAFT", "APPROVED", "REJECTED", "ORDERED", "SENT", "DELIVERED", "SUPERSEDED"];
 const GIFT_CATEGORIES = [
   "SUBSCRIPTION", "EVENT", "MERCHANDISE", "EXPERIENCE",
   "PHYSICAL_PRODUCT", "CHARITY", "GIFT_CARD",
@@ -57,16 +58,25 @@ export default async function GiftsPage({
 }) {
   const sp = await searchParams;
 
-  const status    = typeof sp.status    === "string" ? sp.status    : "";
-  const category  = typeof sp.category  === "string" ? sp.category  : "";
-  const giftType  = typeof sp.giftType  === "string" ? sp.giftType  : "";
-  const sortBy    = typeof sp.sortBy    === "string" ? sp.sortBy    : "createdAt_desc";
-  const minBudget = sp.minBudget ? Number(sp.minBudget) : undefined;
-  const maxBudget = sp.maxBudget ? Number(sp.maxBudget) : undefined;
+  const status       = typeof sp.status       === "string" ? sp.status       : "";
+  const category     = typeof sp.category     === "string" ? sp.category     : "";
+  const giftType     = typeof sp.giftType     === "string" ? sp.giftType     : "";
+  const sortBy       = typeof sp.sortBy       === "string" ? sp.sortBy       : "createdAt_desc";
+  const showSuperseded = sp.showSuperseded === "1";
+  const minBudget    = sp.minBudget ? Number(sp.minBudget) : undefined;
+  const maxBudget    = sp.maxBudget ? Number(sp.maxBudget) : undefined;
+
+  // By default exclude SUPERSEDED gifts unless the user opts in.
+  // If the user explicitly filters by status, respect that filter as-is.
+  const statusFilter = status
+    ? { status: status as never }
+    : showSuperseded
+      ? {}
+      : { status: { not: "SUPERSEDED" as never } };
 
   const gifts = await prisma.giftRecommendation.findMany({
     where: {
-      ...(status   && { status:   status   as never }),
+      ...statusFilter,
       ...(category && { category: category as never }),
       ...(giftType && { giftType: giftType as never }),
       ...((minBudget !== undefined || maxBudget !== undefined) && {
@@ -90,7 +100,7 @@ export default async function GiftsPage({
     orderBy: buildOrderBy(sortBy),
   });
 
-  const hasFilters = status || category || giftType || minBudget || maxBudget;
+  const hasFilters = status || category || giftType || minBudget || maxBudget || showSuperseded;
   const draftCount    = gifts.filter((g) => g.status === "DRAFT").length;
   const approvedCount = gifts.filter((g) => g.status === "APPROVED").length;
 
@@ -168,6 +178,20 @@ export default async function GiftsPage({
                 <option key={o.value} value={o.value}>{o.label}</option>
               ))}
             </select>
+          </div>
+
+          {/* Show superseded toggle */}
+          <div className="flex flex-col gap-1 justify-end">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                name="showSuperseded"
+                value="1"
+                defaultChecked={showSuperseded}
+                className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+              />
+              <span className="text-xs font-medium text-slate-500">Show superseded</span>
+            </label>
           </div>
 
           <div className="flex gap-2">

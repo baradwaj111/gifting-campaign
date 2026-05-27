@@ -63,6 +63,26 @@ export async function POST(
       );
     }
 
+    // Skip if the contact already has a committed gift — one active gift per contact.
+    const activeGift = await prisma.giftRecommendation.findFirst({
+      where: {
+        contactId: id,
+        status: { in: ["APPROVED", "ORDERED", "SENT", "DELIVERED"] },
+      },
+      select: { id: true, status: true, title: true },
+    });
+    if (activeGift) {
+      return Response.json(
+        {
+          error: "Contact already has an active gift. Approve or reject it before re-researching.",
+          giftId: activeGift.id,
+          giftStatus: activeGift.status,
+          giftTitle: activeGift.title,
+        },
+        { status: 409 }
+      );
+    }
+
     if (immediate) {
       // Run synchronously — all three stages complete before we respond.
       await processContactPipeline(id);

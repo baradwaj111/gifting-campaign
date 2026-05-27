@@ -130,8 +130,18 @@ One detected interest per category, per contact.
 | `category` | `GiftCategory` (7 values) |
 | `giftType` | `PHYSICAL / VIRTUAL / EXPERIENCE` |
 | `estimatedCost` | Integer USD |
-| `status` | `GiftStatus` (6 values) |
+| `status` | `GiftStatus` (7 values — see lifecycle below) |
 | `reasoning` | Plain-English justification combining interest + tier context |
+
+**One active gift per contact rule:**
+A contact may have multiple DRAFT recommendations, but only one may ever be APPROVED. When a gift is approved, all other DRAFT recommendations for that contact are automatically set to `SUPERSEDED` in the same database transaction. SUPERSEDED gifts are hidden from the main Gifts dashboard by default (toggle via "Show superseded" checkbox) and from the contact detail page.
+
+**`GiftStatus` lifecycle:**
+```
+DRAFT → APPROVED → ORDERED → SENT → DELIVERED
+      ↘ REJECTED
+      ↘ SUPERSEDED  (auto-set when a sibling gift is approved)
+```
 
 ### Key indexes
 
@@ -269,11 +279,12 @@ For each InterestCategory:
 The engine maps `(InterestCategory, AccountTier)` → a specific gift template. This gives 10 × 3 = 30 curated templates.
 
 **Selection algorithm:**
-1. Deduplicate interests — keep the highest-confidence one per category
-2. Sort the deduplicated list by confidence descending
-3. Take the top 3 (avoids overwhelming the contact with gifts)
-4. Look up the template for `(category, account.tier)` and apply it
-5. Append a `reasoning` string: the template rationale + `"Detected {category} interest with {X}% confidence."`
+1. **Idempotency guard** — if the contact already has an APPROVED, ORDERED, SENT, or DELIVERED gift, gift generation is skipped entirely. This protects committed approvals from being overwritten on re-research.
+2. Deduplicate interests — keep the highest-confidence one per category
+3. Sort the deduplicated list by confidence descending
+4. Take the top 3 (avoids overwhelming the contact with gifts)
+5. Look up the template for `(category, account.tier)` and apply it
+6. Append a `reasoning` string: the template rationale + `"Detected {category} interest with {X}% confidence."`
 
 **Budget brackets (embedded in catalog):**
 

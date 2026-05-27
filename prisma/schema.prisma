@@ -83,6 +83,7 @@ enum GiftStatus {
   SENT
   DELIVERED
   REJECTED
+  SUPERSEDED
 }
 
 model Account {

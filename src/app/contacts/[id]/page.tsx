@@ -79,7 +79,10 @@ export default async function ContactDetailPage({
       profiles: { orderBy: { createdAt: "asc" } },
       interests: { orderBy: { confidence: "desc" } },
       researchJobs: { orderBy: { createdAt: "desc" } },
-      recommendations: { orderBy: { estimatedCost: "desc" } },
+      recommendations: {
+        where: { status: { not: "SUPERSEDED" } },
+        orderBy: { estimatedCost: "desc" },
+      },
     },
   });
 

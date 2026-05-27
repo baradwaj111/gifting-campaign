@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "GiftStatus" ADD VALUE 'SUPERSEDED';

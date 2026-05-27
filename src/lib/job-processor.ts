@@ -52,7 +52,31 @@ async function handleInterestExtraction(job: JobWithContext): Promise<void> {
   }
 }
 
+// Statuses that mean a contact already has a committed gift — skip generation.
+const ACTIVE_GIFT_STATUSES = ["APPROVED", "ORDERED", "SENT", "DELIVERED"] as const;
+
 async function handleGiftGeneration(job: JobWithContext): Promise<void> {
+  // Idempotency guard: skip if the contact already has an active gift.
+  // This prevents overwriting a committed approval when re-researching.
+  const activeGift = await prisma.giftRecommendation.findFirst({
+    where: {
+      contactId: job.contactId,
+      status: { in: [...ACTIVE_GIFT_STATUSES] },
+    },
+    select: { id: true, status: true },
+  });
+
+  if (activeGift) {
+    console.log(
+      `[processor] Contact ${job.contactId} already has an active gift (${activeGift.status}), skipping gift generation.`
+    );
+    await prisma.contact.update({
+      where: { id: job.contactId },
+      data: { status: "COMPLETED" },
+    });
+    return;
+  }
+
   const interests = await prisma.contactInterest.findMany({
     where: { contactId: job.contactId },
   });
@@ -61,9 +85,10 @@ async function handleGiftGeneration(job: JobWithContext): Promise<void> {
   const gifts = generateGifts(job.contactId, interests, tier);
 
   if (gifts.length > 0) {
-    // Remove stale recommendations before inserting fresh ones
+    // Remove only DRAFT recommendations before inserting fresh ones.
+    // SUPERSEDED/REJECTED gifts are kept for audit trail.
     await prisma.giftRecommendation.deleteMany({
-      where: { contactId: job.contactId },
+      where: { contactId: job.contactId, status: "DRAFT" },
     });
     await prisma.giftRecommendation.createMany({ data: gifts });
   }
