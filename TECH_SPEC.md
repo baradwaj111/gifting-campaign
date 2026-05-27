@@ -402,15 +402,3 @@ The generated client output path (`src/generated/prisma`) is set in `schema.pris
 | Job retry logic | Single-attempt with FAILED state; retries would use exponential backoff in production |
 | Distributed job queue | Single-worker; production would use Bull/BullMQ with Redis |
 
----
-
-## 10. Future Improvements
-
-- **Real scraping**: use Apify or PhantomBuster for LinkedIn profile data; store raw HTML in `SocialProfile.rawText`
-- **LLM extraction**: replace keyword rules with a GPT-4o or Claude prompt that returns structured interest JSON
-- **Retry queue**: Bull/BullMQ with Redis for distributed, retryable jobs
-- **Auth**: Clerk or NextAuth for multi-tenant team access
-- **Webhooks**: notify Slack/CRM when a gift is approved
-- **Analytics**: gift approval rates, interest category distributions, ACV correlation
-- **Vendor integration**: fulfillment via Sendoso, Postal, or direct vendor APIs
-- **Sorting on server**: expose `sortBy` on all API endpoints for external consumers
